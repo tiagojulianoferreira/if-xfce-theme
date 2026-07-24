@@ -2,6 +2,7 @@
 # if-theme-builder.sh - Constrói o tema IF-XFCE do zero
 # Versão: 1.0
 # Descrição: Cria toda a estrutura e arquivos do tema em um único comando
+# Uso: curl -fsSL https://seu-servidor/if-theme-builder.sh | bash
 
 set -e  # Interrompe em caso de erro
 
@@ -35,20 +36,38 @@ log_step() {
     echo -e "\n${CYAN}▶ ${BOLD}$1${NC}"
 }
 
-# --- Função para criar arquivos ---
+# --- Função para criar arquivos com heredoc ---
 create_file() {
     local file="$1"
     local content="$2"
     local dir=$(dirname "$file")
     
     mkdir -p "$dir"
-    echo "$content" > "$file"
+    cat > "$file" << 'EOF'
+'$content'
+EOF
+    # O problema com heredoc e variáveis é complexo.
+    # Vou usar uma abordagem diferente: echo com -e e escapes.
+}
+
+# --- Função melhorada para criar arquivos ---
+create_file() {
+    local file="$1"
+    local content="$2"
+    local dir=$(dirname "$file")
+    
+    mkdir -p "$dir"
+    printf "%s\n" "$content" > "$file"
     log_info "Criado: $file"
 }
 
 # --- Função principal ---
 main() {
-    clear
+    # Limpa a tela apenas se for um terminal interativo
+    if [ -t 1 ]; then
+        clear
+    fi
+    
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                                                                  ║${NC}"
     echo -e "${CYAN}║     🏛️  CONSTRUTOR DO TEMA IF-XFCE v1.0                          ║${NC}"
@@ -62,8 +81,13 @@ main() {
     log_step "Verificando dependências"
     if ! command -v sassc &> /dev/null; then
         log_warn "sassc não encontrado. Instalando..."
-        sudo apt update -qq && sudo apt install -y sassc -qq
-        log_success "sassc instalado!"
+        if command -v apt &> /dev/null; then
+            sudo apt update -qq && sudo apt install -y sassc -qq
+            log_success "sassc instalado!"
+        else
+            log_error "sassc não encontrado e APT não disponível. Instale manualmente."
+            exit 1
+        fi
     else
         log_success "sassc encontrado!"
     fi
@@ -83,7 +107,8 @@ main() {
     log_step "Criando arquivos de cores"
 
     # 1.1 Cores Base (comuns a todos os perfis)
-    create_file "src/_sass/_colors.scss" '// _colors.scss - Cores Base do Sistema
+    cat > "src/_sass/_colors.scss" << 'EOF'
+// _colors.scss - Cores Base do Sistema
 // Cores oficiais: IF + Gov.br
 
 // Cores IF
@@ -114,10 +139,13 @@ $wm_highlight: rgba(255,255,255,0.4);
 $wm_title: $text_color;
 $wm_unfocused_title: rgba(0,0,0,0.6);
 $wm_button_close_hover_bg: #E57373;
-$wm_button_close_active_bg: #E53935;'
+$wm_button_close_active_bg: #E53935;
+EOF
+    log_info "Criado: src/_sass/_colors.scss"
 
     # 1.2 Cores - Perfil Administrativo
-    create_file "src/_sass/_colors-if-admin.scss" '// _colors-if-admin.scss - Perfil Administrativo
+    cat > "src/_sass/_colors-if-admin.scss" << 'EOF'
+// _colors-if-admin.scss - Perfil Administrativo
 // Sobriedade, profissionalismo, foco em produtividade
 
 @import "colors";
@@ -141,10 +169,13 @@ $border_color: rgba(0,0,0,0.08);
 
 // Seleção
 $selected_bg_color: $gov_azul;
-$selected_fg_color: #ffffff;'
+$selected_fg_color: #ffffff;
+EOF
+    log_info "Criado: src/_sass/_colors-if-admin.scss"
 
     # 1.3 Cores - Perfil Acadêmico
-    create_file "src/_sass/_colors-if-academic.scss" '// _colors-if-academic.scss - Perfil Acadêmico
+    cat > "src/_sass/_colors-if-academic.scss" << 'EOF'
+// _colors-if-academic.scss - Perfil Acadêmico
 // Energia, inovação, tecnologia (Dark Mode)
 
 @import "colors";
@@ -168,10 +199,13 @@ $border_color: rgba(255,255,255,0.08);
 
 // Seleção
 $selected_bg_color: $if_vermelho;
-$selected_fg_color: #ffffff;'
+$selected_fg_color: #ffffff;
+EOF
+    log_info "Criado: src/_sass/_colors-if-academic.scss"
 
     # 1.4 Cores - Perfil Comunidade
-    create_file "src/_sass/_colors-if-community.scss" '// _colors-if-community.scss - Perfil Comunidade
+    cat > "src/_sass/_colors-if-community.scss" << 'EOF'
+// _colors-if-community.scss - Perfil Comunidade
 // Amigável, acessível, cores vibrantes
 
 @import "colors";
@@ -195,7 +229,9 @@ $border_color: rgba(0,0,0,0.08);
 
 // Seleção
 $selected_bg_color: $gov_azul;
-$selected_fg_color: #ffffff;'
+$selected_fg_color: #ffffff;
+EOF
+    log_info "Criado: src/_sass/_colors-if-community.scss"
 
     # ============================================================
     # 2. VARIÁVEIS ESTRUTURAIS
@@ -203,7 +239,8 @@ $selected_fg_color: #ffffff;'
     
     log_step "Criando variáveis estruturais"
 
-    create_file "src/_sass/_variables.scss" '// _variables.scss - Variáveis estruturais
+    cat > "src/_sass/_variables.scss" << 'EOF'
+// _variables.scss - Variáveis estruturais
 // Fonte oficial: Rawline (Gov.br)
 $font-family: "Rawline", "Noto Sans", "Helvetica", "Segoe UI", sans-serif;
 $font-size: 10pt;
@@ -219,7 +256,9 @@ $panel_radius: 0px;
 $panel_height: 32px;
 
 // Sombras
-$shadow: 0 1px 2px rgba(0,0,0,0.12), 0 4px 5px rgba(0,0,0,0.16), 0 1px 6px rgba(0,0,0,0.1);'
+$shadow: 0 1px 2px rgba(0,0,0,0.12), 0 4px 5px rgba(0,0,0,0.16), 0 1px 6px rgba(0,0,0,0.1);
+EOF
+    log_info "Criado: src/_sass/_variables.scss"
 
     # ============================================================
     # 3. ARQUIVOS DE ENTRADA (GTK SCSS)
@@ -227,8 +266,9 @@ $shadow: 0 1px 2px rgba(0,0,0,0.12), 0 4px 5px rgba(0,0,0,0.16), 0 1px 6px rgba(
     
     log_step "Criando arquivos de entrada GTK"
 
-    # 3.1 Arquivo de entrada base (apenas importações)
-    create_file "src/gtk-3.0/gtk-base.scss" '// gtk-base.scss - Base comum para todos os perfis
+    # 3.1 Administrativo
+    cat > "src/gtk-3.0/gtk-admin.scss" << 'EOF'
+// gtk-admin.scss - Perfil Administrativo
 $variant: "light";
 $topbar: "dark";
 $compact: "false";
@@ -238,23 +278,13 @@ $compact: "false";
 @import "../_sass/gtk/drawing-4.0";
 @import "../_sass/gtk/common-4.0";
 @import "../_sass/gtk/apps-4.0";
-@import "../_sass/gtk/colors-public";'
+@import "../_sass/gtk/colors-public";
+EOF
+    log_info "Criado: src/gtk-3.0/gtk-admin.scss"
 
-    # 3.2 Administrativo (claro, azul gov)
-    create_file "src/gtk-3.0/gtk-admin.scss" '// gtk-admin.scss - Perfil Administrativo
-$variant: "light";
-$topbar: "dark";
-$compact: "false";
-
-@import "../_sass/variables";
-@import "../_sass/colors-if-admin";
-@import "../_sass/gtk/drawing-4.0";
-@import "../_sass/gtk/common-4.0";
-@import "../_sass/gtk/apps-4.0";
-@import "../_sass/gtk/colors-public";'
-
-    # 3.3 Acadêmico (escuro, vermelho IF)
-    create_file "src/gtk-3.0/gtk-academic.scss" '// gtk-academic.scss - Perfil Acadêmico
+    # 3.2 Acadêmico
+    cat > "src/gtk-3.0/gtk-academic.scss" << 'EOF'
+// gtk-academic.scss - Perfil Acadêmico
 $variant: "dark";
 $topbar: "dark";
 $compact: "false";
@@ -264,10 +294,13 @@ $compact: "false";
 @import "../_sass/gtk/drawing-4.0";
 @import "../_sass/gtk/common-4.0";
 @import "../_sass/gtk/apps-4.0";
-@import "../_sass/gtk/colors-public";'
+@import "../_sass/gtk/colors-public";
+EOF
+    log_info "Criado: src/gtk-3.0/gtk-academic.scss"
 
-    # 3.4 Comunidade (claro, vibrante)
-    create_file "src/gtk-3.0/gtk-community.scss" '// gtk-community.scss - Perfil Comunidade
+    # 3.3 Comunidade
+    cat > "src/gtk-3.0/gtk-community.scss" << 'EOF'
+// gtk-community.scss - Perfil Comunidade
 $variant: "light";
 $topbar: "dark";
 $compact: "false";
@@ -277,20 +310,9 @@ $compact: "false";
 @import "../_sass/gtk/drawing-4.0";
 @import "../_sass/gtk/common-4.0";
 @import "../_sass/gtk/apps-4.0";
-@import "../_sass/gtk/colors-public";'
-
-    # 3.5 Versão Compacta (opcional)
-    create_file "src/gtk-3.0/gtk-admin-compact.scss" '// gtk-admin-compact.scss - Administrativo Compacto
-$variant: "light";
-$topbar: "dark";
-$compact: "true";
-
-@import "../_sass/variables";
-@import "../_sass/colors-if-admin";
-@import "../_sass/gtk/drawing-4.0";
-@import "../_sass/gtk/common-4.0";
-@import "../_sass/gtk/apps-4.0";
-@import "../_sass/gtk/colors-public";'
+@import "../_sass/gtk/colors-public";
+EOF
+    log_info "Criado: src/gtk-3.0/gtk-community.scss"
 
     # ============================================================
     # 4. ARQUIVOS DE ESTILO GTK (SCSS)
@@ -298,8 +320,9 @@ $compact: "true";
     
     log_step "Criando arquivos de estilo GTK"
 
-    # 4.1 drawing-4.0.scss (desenhos e estados)
-    create_file "src/_sass/gtk/drawing-4.0.scss" '// drawing-4.0.scss - Desenhos e estados básicos
+    # 4.1 drawing-4.0.scss
+    cat > "src/_sass/gtk/drawing-4.0.scss" << 'EOF'
+// drawing-4.0.scss - Desenhos e estados básicos
 // Baseado no Windows11-gtk-theme
 
 // Funções de desenho
@@ -349,10 +372,13 @@ $compact: "true";
 // Transições
 @mixin transition($properties...) {
     transition: $properties 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}'
+}
+EOF
+    log_info "Criado: src/_sass/gtk/drawing-4.0.scss"
 
-    # 4.2 common-4.0.scss (componentes comuns)
-    create_file "src/_sass/gtk/common-4.0.scss" '// common-4.0.scss - Componentes comuns GTK
+    # 4.2 common-4.0.scss
+    cat > "src/_sass/gtk/common-4.0.scss" << 'EOF'
+// common-4.0.scss - Componentes comuns GTK
 // Baseado no Windows11-gtk-theme
 
 /* ============================================================
@@ -681,10 +707,13 @@ expander:checked {
 
 expander:hover {
     color: $text_color;
-}'
+}
+EOF
+    log_info "Criado: src/_sass/gtk/common-4.0.scss"
 
-    # 4.3 apps-4.0.scss (aplicações específicas)
-    create_file "src/_sass/gtk/apps-4.0.scss" '// apps-4.0.scss - Estilos específicos de aplicações
+    # 4.3 apps-4.0.scss
+    cat > "src/_sass/gtk/apps-4.0.scss" << 'EOF'
+// apps-4.0.scss - Estilos específicos de aplicações
 // Baseado no Windows11-gtk-theme
 
 /* ============================================================
@@ -837,10 +866,13 @@ progressbar > trough {
 progressbar > trough > progress {
     background-color: $primary;
     @include rounded($roundness);
-}'
+}
+EOF
+    log_info "Criado: src/_sass/gtk/apps-4.0.scss"
 
-    # 4.4 colors-public.scss (cores públicas)
-    create_file "src/_sass/gtk/colors-public.scss" '// colors-public.scss - Cores públicas do GTK
+    # 4.4 colors-public.scss
+    cat > "src/_sass/gtk/colors-public.scss" << 'EOF'
+// colors-public.scss - Cores públicas do GTK
 // Baseado no Windows11-gtk-theme
 
 // Estas cores são exportadas para uso geral
@@ -883,7 +915,9 @@ progressbar > trough > progress {
 // Outros
 @define-color content_view_bg $view_color;
 @define-color placeholder_text_color $text_muted_color;
-@define-color text_view_bg $view_color;'
+@define-color text_view_bg $view_color;
+EOF
+    log_info "Criado: src/_sass/gtk/colors-public.scss"
 
     # ============================================================
     # 5. TEMA DO XFWM4
@@ -891,7 +925,8 @@ progressbar > trough > progress {
     
     log_step "Criando tema do gerenciador de janelas"
 
-    create_file "src/xfwm4/themerc" '# Tema para o XFWM4 (Gerenciador de Janelas)
+    cat > "src/xfwm4/themerc" << 'EOF'
+# Tema para o XFWM4 (Gerenciador de Janelas)
 # Estilo: Windows 11 com cores IF
 
 # Cores dos títulos
@@ -922,7 +957,9 @@ shadow_delta_x=4
 shadow_delta_y=4
 shadow_radius=12
 shadow_color=#000000
-shadow_opacity=25'
+shadow_opacity=25
+EOF
+    log_info "Criado: src/xfwm4/themerc"
 
     # ============================================================
     # 6. NOTIFICAÇÕES XFCE
@@ -930,7 +967,8 @@ shadow_opacity=25'
     
     log_step "Criando tema de notificações"
 
-    create_file "src/xfce-notify-4.0/gtk.css" '/* Tema de Notificações XFCE */
+    cat > "src/xfce-notify-4.0/gtk.css" << 'EOF'
+/* Tema de Notificações XFCE */
 /* Estilo Windows 11 com cores IF */
 
 #XfceNotifyWindow {
@@ -979,7 +1017,9 @@ shadow_opacity=25'
 #XfceNotifyWindow progressbar progress {
     background-color: #00a91c;
     border-radius: 6px;
-}'
+}
+EOF
+    log_info "Criado: src/xfce-notify-4.0/gtk.css"
 
     # ============================================================
     # 7. SCRIPT DE COMPILAÇÃO (parse-sass.sh)
@@ -987,7 +1027,8 @@ shadow_opacity=25'
     
     log_step "Criando script de compilação"
 
-    create_file "parse-sass.sh" '#!/bin/bash
+    cat > "parse-sass.sh" << 'EOF'
+#!/bin/bash
 # parse-sass.sh - Compila os arquivos SCSS para CSS
 
 set -e
@@ -1036,9 +1077,10 @@ ln -sf gtk-admin.css src/gtk-3.0/gtk.css 2>/dev/null || true
 ln -sf gtk-admin.css src/gtk-4.0/gtk.css 2>/dev/null || true
 
 echo ""
-log_success "✅ Compilação concluída!"'
-
+log_success "✅ Compilação concluída!"
+EOF
     chmod +x parse-sass.sh
+    log_info "Criado: parse-sass.sh (executável)"
 
     # ============================================================
     # 8. SCRIPT DE INSTALAÇÃO (install.sh)
@@ -1046,7 +1088,8 @@ log_success "✅ Compilação concluída!"'
     
     log_step "Criando script de instalação"
 
-    create_file "install.sh" '#!/bin/bash
+    cat > "install.sh" << 'EOF'
+#!/bin/bash
 # install.sh - Instala os temas IF no sistema
 
 set -e
@@ -1056,7 +1099,7 @@ THEME_NAME="IF-Theme"
 PROFILES=("admin" "academic" "community")
 
 show_help() {
-    cat << EOF
+    cat << HELP
 Uso: ./install.sh [OPÇÕES]
 
 Opções:
@@ -1064,7 +1107,7 @@ Opções:
   -n, --name NAME     Nome base do tema (padrão: IF-Theme)
   -p, --profile PROFILE Instalar apenas um perfil específico
   -h, --help          Mostra esta ajuda
-EOF
+HELP
 }
 
 while [[ $# -gt 0 ]]; do
@@ -1113,7 +1156,7 @@ install_profile() {
     fi
     
     # Cria index.theme
-    cat > "${theme_dir}/index.theme" << EOF
+    cat > "${theme_dir}/index.theme" << INDEX
 [Desktop Entry]
 Type=X-GNOME-Metatheme
 Name=${THEME_NAME} ${profile}
@@ -1126,7 +1169,7 @@ MetacityTheme=${THEME_NAME}-${profile}
 IconTheme=Papirus
 CursorTheme=Adwaita
 FontName=Rawline, Noto Sans 10
-EOF
+INDEX
     
     chmod -R 755 "${theme_dir}"
     chown -R root:root "${theme_dir}" 2>/dev/null || true
@@ -1146,9 +1189,10 @@ echo "🎉 Instalação concluída!"
 echo ""
 echo "📝 Para aplicar:"
 echo "   xfconf-query -c xfce4-desktop -p /gtk-theme -s \"${THEME_NAME}-admin\""
-echo "   xfconf-query -c xfwm4 -p /general/theme -s \"${THEME_NAME}-admin\""'
-
+echo "   xfconf-query -c xfwm4 -p /general/theme -s \"${THEME_NAME}-admin\""
+EOF
     chmod +x install.sh
+    log_info "Criado: install.sh (executável)"
 
     # ============================================================
     # 9. SCRIPT DE CONSTRUÇÃO E INSTALAÇÃO UNIFICADO
@@ -1156,7 +1200,8 @@ echo "   xfconf-query -c xfwm4 -p /general/theme -s \"${THEME_NAME}-admin\""'
     
     log_step "Criando script unificado"
 
-    create_file "build.sh" '#!/bin/bash
+    cat > "build.sh" << 'EOF'
+#!/bin/bash
 # build.sh - Compila e instala o tema
 
 echo "╔═══════════════════════════════════════════════════════════╗"
@@ -1193,33 +1238,55 @@ else
 fi
 
 echo ""
-echo "🎉 Processo concluído!"'
-
+echo "🎉 Processo concluído!"
+EOF
     chmod +x build.sh
+    log_info "Criado: build.sh (executável)"
 
     # ============================================================
-    # 10. README
+    # 10. COMPILAÇÃO
     # ============================================================
     
-    log_step "Criando README"
+    log_step "Compilando os temas"
+    ./parse-sass.sh
 
-    create_file "README.md" '# 🏛️ IF-XFCE-Theme
+    # ============================================================
+    # 11. RESUMO FINAL
+    # ============================================================
+    
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  ✅ TEMA IF-XFCE CONSTRUÍDO COM SUCESSO!                         ║${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  📁 Localização: $(pwd)${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  📦 Para instalar:                                               ║${NC}"
+    echo -e "${GREEN}║     sudo ./install.sh                                            ║${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  📝 Ou com opções:                                               ║${NC}"
+    echo -e "${GREEN}║     ./install.sh --profile admin                                 ║${NC}"
+    echo -e "${GREEN}║     ./install.sh --dest ~/.themes                                ║${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Pergunta se deseja instalar
+    if [ -t 0 ]; then
+        read -p "Deseja instalar o tema agora? (s/N) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Ss]$ ]]; then
+            if [[ $EUID -ne 0 ]]; then
+                echo "⚠️  Instalação requer privilégios de root. Execute:"
+                echo "   cd $(pwd) && sudo ./install.sh"
+            else
+                ./install.sh
+            fi
+        else
+            echo "ℹ️  Para instalar depois: cd $(pwd) && sudo ./install.sh"
+        fi
+    fi
+}
 
-Tema oficial para o ambiente gráfico XFCE, baseado na **Identidade Visual da Rede Federal** e no **Design System do Gov.br**.
-
-## 📋 Perfis
-
-| Perfil | Nome do Tema | Descrição |
-|--------|--------------|-----------|
-| **Administrativo** | `IF-Theme-admin` | Sobriedade, profissionalismo, foco em produtividade |
-| **Acadêmico** | `IF-Theme-academic` | Energia, inovação, tecnologia (Dark Mode) |
-| **Comunidade** | `IF-Theme-community` | Amigável, acessível, cores vibrantes |
-
-## 🚀 Instalação
-
-### Instalação Rápida
-
-```bash
-git clone https://codeberg.org/seu-usuario/if-xfce-theme.git
-cd if-xfce-theme
-./build.sh
+# --- Executa ---
+main "$@"
