@@ -81,7 +81,7 @@ main() {
     
     log_step "Criando arquivos de cores"
 
-    # 1.1 Cores Base (comuns a todos os perfis)
+    # 1.1 Cores Base
     cat > "src/_sass/_colors.scss" << 'EOF'
 // _colors.scss - Cores Base do Sistema
 // Cores oficiais: IF + Gov.br
@@ -290,12 +290,12 @@ EOF
     log_info "Criado: src/gtk-3.0/gtk-community.scss"
 
     # ============================================================
-    # 4. ARQUIVOS DE ESTILO GTK (SCSS) - CORRIGIDOS
+    # 4. ARQUIVOS DE ESTILO GTK (SCSS)
     # ============================================================
     
     log_step "Criando arquivos de estilo GTK"
 
-    # 4.1 drawing-4.0.scss (CORRIGIDO - sem alpha(currentColor))
+    # 4.1 drawing-4.0.scss
     cat > "src/_sass/gtk/drawing-4.0.scss" << 'EOF'
 // drawing-4.0.scss - Desenhos e estados básicos
 // Baseado no Windows11-gtk-theme
@@ -313,7 +313,7 @@ EOF
     }
 }
 
-// Estados básicos (usando variáveis de cor diretamente)
+// Estados básicos
 %state-hover {
     background-color: rgba(0, 0, 0, 0.08);
     color: $text_color;
@@ -360,7 +360,7 @@ EOF
 EOF
     log_info "Criado: src/_sass/gtk/drawing-4.0.scss"
 
-    # 4.2 common-4.0.scss (CORRIGIDO)
+    # 4.2 common-4.0.scss
     cat > "src/_sass/gtk/common-4.0.scss" << 'EOF'
 // common-4.0.scss - Componentes comuns GTK
 // Baseado no Windows11-gtk-theme
