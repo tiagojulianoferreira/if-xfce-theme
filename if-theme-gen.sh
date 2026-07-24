@@ -36,31 +36,6 @@ log_step() {
     echo -e "\n${CYAN}▶ ${BOLD}$1${NC}"
 }
 
-# --- Função para criar arquivos com heredoc ---
-create_file() {
-    local file="$1"
-    local content="$2"
-    local dir=$(dirname "$file")
-    
-    mkdir -p "$dir"
-    cat > "$file" << 'EOF'
-'$content'
-EOF
-    # O problema com heredoc e variáveis é complexo.
-    # Vou usar uma abordagem diferente: echo com -e e escapes.
-}
-
-# --- Função melhorada para criar arquivos ---
-create_file() {
-    local file="$1"
-    local content="$2"
-    local dir=$(dirname "$file")
-    
-    mkdir -p "$dir"
-    printf "%s\n" "$content" > "$file"
-    log_info "Criado: $file"
-}
-
 # --- Função principal ---
 main() {
     # Limpa a tela apenas se for um terminal interativo
@@ -315,12 +290,12 @@ EOF
     log_info "Criado: src/gtk-3.0/gtk-community.scss"
 
     # ============================================================
-    # 4. ARQUIVOS DE ESTILO GTK (SCSS)
+    # 4. ARQUIVOS DE ESTILO GTK (SCSS) - CORRIGIDOS
     # ============================================================
     
     log_step "Criando arquivos de estilo GTK"
 
-    # 4.1 drawing-4.0.scss
+    # 4.1 drawing-4.0.scss (CORRIGIDO - sem alpha(currentColor))
     cat > "src/_sass/gtk/drawing-4.0.scss" << 'EOF'
 // drawing-4.0.scss - Desenhos e estados básicos
 // Baseado no Windows11-gtk-theme
@@ -338,14 +313,14 @@ EOF
     }
 }
 
-// Estados básicos
+// Estados básicos (usando variáveis de cor diretamente)
 %state-hover {
-    background-color: alpha(currentColor, 0.08);
+    background-color: rgba(0, 0, 0, 0.08);
     color: $text_color;
 }
 
 %state-active {
-    background-color: alpha(currentColor, 0.16);
+    background-color: rgba(0, 0, 0, 0.16);
     color: $text_color;
 }
 
@@ -357,6 +332,15 @@ EOF
 %state-selected {
     background-color: $selected_bg_color;
     color: $selected_fg_color;
+}
+
+// Mixins para estados com cores específicas
+@mixin hover-bg($color) {
+    background-color: rgba($color, 0.08);
+}
+
+@mixin active-bg($color) {
+    background-color: rgba($color, 0.16);
 }
 
 // Cantos arredondados
@@ -376,7 +360,7 @@ EOF
 EOF
     log_info "Criado: src/_sass/gtk/drawing-4.0.scss"
 
-    # 4.2 common-4.0.scss
+    # 4.2 common-4.0.scss (CORRIGIDO)
     cat > "src/_sass/gtk/common-4.0.scss" << 'EOF'
 // common-4.0.scss - Componentes comuns GTK
 // Baseado no Windows11-gtk-theme
@@ -419,11 +403,11 @@ button {
 
 button:hover {
     background-color: $bg_color;
-    border-color: alpha($text_color, 0.2);
+    border-color: rgba(0, 0, 0, 0.2);
 }
 
 button:active, button:checked {
-    background-color: alpha($text_color, 0.1);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 button.suggested-action {
@@ -472,7 +456,7 @@ entry {
 
 entry:focus {
     border-color: $primary;
-    box-shadow: 0 0 0 2px alpha($primary, 0.15);
+    box-shadow: 0 0 0 2px rgba($primary, 0.15);
 }
 
 entry:disabled {
@@ -514,7 +498,7 @@ menu item, .menu item {
 }
 
 menu item:hover, .menu item:selected {
-    background-color: alpha($primary, 0.08);
+    background-color: rgba($primary, 0.08);
     color: $primary;
 }
 
@@ -523,7 +507,7 @@ menu item:hover, .menu item:selected {
    ============================================================ */
 
 scrollbar slider {
-    background-color: alpha($text_color, 0.2);
+    background-color: rgba($text_color, 0.2);
     @include rounded(10px);
     min-width: 6px;
     min-height: 6px;
@@ -584,11 +568,11 @@ notebook stack {
 }
 
 .xfce4-panel button:hover {
-    background-color: alpha($view_color, 0.08);
+    background-color: rgba($view_color, 0.08);
 }
 
 .xfce4-panel button:checked {
-    background-color: alpha($view_color, 0.12);
+    background-color: rgba($view_color, 0.12);
 }
 
 /* ============================================================
@@ -665,7 +649,7 @@ scrollbar.overlay-indicator:not(.dragging):not(.hovering) > range > trough > sli
     min-width: 4px;
     min-height: 4px;
     margin: 3px;
-    border: 1px solid alpha($view_color, 0.3);
+    border: 1px solid rgba($view_color, 0.3);
 }
 
 /* ============================================================
@@ -686,7 +670,7 @@ scrollbar.overlay-indicator:not(.dragging):not(.hovering) > range > trough > sli
 }
 
 .view:selected, iconview:selected, row:selected {
-    background-color: alpha($primary, 0.1);
+    background-color: rgba($primary, 0.1);
     color: $text_color;
 }
 
@@ -737,11 +721,11 @@ EOF
 }
 
 .nautilus-grid-view child.activatable:selected {
-    background-color: alpha($primary, 0.1);
+    background-color: rgba($primary, 0.1);
 }
 
 .nautilus-list-view listview.view > row.activatable:selected {
-    background-color: alpha($primary, 0.12);
+    background-color: rgba($primary, 0.12);
 }
 
 /* ============================================================
@@ -753,7 +737,7 @@ EOF
 }
 
 .thunar .sidebar row:selected {
-    background-color: alpha($primary, 0.1);
+    background-color: rgba($primary, 0.1);
     color: $primary;
 }
 
@@ -824,7 +808,7 @@ infobar.error > revealer > box {
 }
 
 .toolbar.osd, toolbar.osd {
-    background-color: alpha($text_color, 0.65);
+    background-color: rgba($text_color, 0.65);
     color: $view_color;
     @include rounded(10px);
 }
@@ -836,7 +820,7 @@ infobar.error > revealer > box {
 stackswitcher {
     padding: 0 3px;
     @include rounded($roundness);
-    background-color: alpha($text_color, 0.05);
+    background-color: rgba($text_color, 0.05);
 }
 
 stackswitcher.linked:not(.vertical) > button:not(.suggested-action):not(.destructive-action) {
@@ -859,7 +843,7 @@ stackswitcher.linked:not(.vertical) > button:not(.suggested-action):not(.destruc
    ============================================================ */
 
 progressbar > trough {
-    background-color: alpha($text_color, 0.1);
+    background-color: rgba($text_color, 0.1);
     @include rounded($roundness);
 }
 
@@ -884,7 +868,7 @@ EOF
 @define-color theme_selected_fg_color $selected_fg_color;
 @define-color insensitive_bg_color $bg_color;
 @define-color insensitive_fg_color $text_muted_color;
-@define-color insensitive_base_color alpha($view_color, 0.6);
+@define-color insensitive_base_color rgba($view_color, 0.6);
 
 // Backdrop
 @define-color theme_unfocused_fg_color $text_color;
@@ -1061,232 +1045,4 @@ compile_profile() {
     else
         mkdir -p src/gtk-4.0
         ln -sf ../gtk-3.0/gtk-${profile}.css src/gtk-4.0/gtk-${profile}.css
-        log_info "  → src/gtk-4.0/gtk-${profile}.css (link simbólico)"
-    fi
-}
-
-echo "🚀 Compilando temas IF..."
-echo ""
-
-compile_profile "admin"
-compile_profile "academic"
-compile_profile "community"
-
-# Versão padrão (link para admin)
-ln -sf gtk-admin.css src/gtk-3.0/gtk.css 2>/dev/null || true
-ln -sf gtk-admin.css src/gtk-4.0/gtk.css 2>/dev/null || true
-
-echo ""
-log_success "✅ Compilação concluída!"
-EOF
-    chmod +x parse-sass.sh
-    log_info "Criado: parse-sass.sh (executável)"
-
-    # ============================================================
-    # 8. SCRIPT DE INSTALAÇÃO (install.sh)
-    # ============================================================
-    
-    log_step "Criando script de instalação"
-
-    cat > "install.sh" << 'EOF'
-#!/bin/bash
-# install.sh - Instala os temas IF no sistema
-
-set -e
-
-DEST_DIR="/usr/share/themes"
-THEME_NAME="IF-Theme"
-PROFILES=("admin" "academic" "community")
-
-show_help() {
-    cat << HELP
-Uso: ./install.sh [OPÇÕES]
-
-Opções:
-  -d, --dest DIR      Diretório de destino (padrão: /usr/share/themes)
-  -n, --name NAME     Nome base do tema (padrão: IF-Theme)
-  -p, --profile PROFILE Instalar apenas um perfil específico
-  -h, --help          Mostra esta ajuda
-HELP
-}
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -d|--dest) DEST_DIR="$2"; shift 2 ;;
-        -n|--name) THEME_NAME="$2"; shift 2 ;;
-        -p|--profile) PROFILES=("$2"); shift 2 ;;
-        -h|--help) show_help; exit 0 ;;
-        *) echo "❌ Opção desconhecida: $1"; show_help; exit 1 ;;
-    esac
-done
-
-if [[ $EUID -ne 0 ]] && [[ "$DEST_DIR" == "/usr/share/themes" ]]; then
-    echo "⚠️  Instalação em /usr/share/themes requer privilégios de root."
-    echo "   Execute: sudo $0"
-    exit 1
-fi
-
-install_profile() {
-    local profile=$1
-    local theme_dir="${DEST_DIR}/${THEME_NAME}-${profile}"
-    
-    echo "📦 Instalando: ${profile} em ${theme_dir}"
-    
-    mkdir -p "${theme_dir}"/{gtk-3.0,gtk-4.0,xfwm4,xfce-notify-4.0}
-    
-    # Copia CSS
-    if [ -f "src/gtk-3.0/gtk-${profile}.css" ]; then
-        cp "src/gtk-3.0/gtk-${profile}.css" "${theme_dir}/gtk-3.0/gtk.css"
-    fi
-    
-    if [ -f "src/gtk-4.0/gtk-${profile}.css" ]; then
-        cp "src/gtk-4.0/gtk-${profile}.css" "${theme_dir}/gtk-4.0/gtk.css"
-    else
-        ln -sf ../gtk-3.0/gtk.css "${theme_dir}/gtk-4.0/gtk.css"
-    fi
-    
-    # Copia xfwm4
-    if [ -f "src/xfwm4/themerc" ]; then
-        cp "src/xfwm4/themerc" "${theme_dir}/xfwm4/themerc"
-    fi
-    
-    # Copia notificações
-    if [ -f "src/xfce-notify-4.0/gtk.css" ]; then
-        cp "src/xfce-notify-4.0/gtk.css" "${theme_dir}/xfce-notify-4.0/gtk.css"
-    fi
-    
-    # Cria index.theme
-    cat > "${theme_dir}/index.theme" << INDEX
-[Desktop Entry]
-Type=X-GNOME-Metatheme
-Name=${THEME_NAME} ${profile}
-Comment=Tema IF - Perfil ${profile}
-Encoding=UTF-8
-
-[X-GNOME-Metatheme]
-GtkTheme=${THEME_NAME}-${profile}
-MetacityTheme=${THEME_NAME}-${profile}
-IconTheme=Papirus
-CursorTheme=Adwaita
-FontName=Rawline, Noto Sans 10
-INDEX
-    
-    chmod -R 755 "${theme_dir}"
-    chown -R root:root "${theme_dir}" 2>/dev/null || true
-    
-    echo "✅ ${profile} instalado!"
-}
-
-echo "🚀 Instalando temas IF..."
-echo ""
-
-for profile in "${PROFILES[@]}"; do
-    install_profile "$profile"
-done
-
-echo ""
-echo "🎉 Instalação concluída!"
-echo ""
-echo "📝 Para aplicar:"
-echo "   xfconf-query -c xfce4-desktop -p /gtk-theme -s \"${THEME_NAME}-admin\""
-echo "   xfconf-query -c xfwm4 -p /general/theme -s \"${THEME_NAME}-admin\""
-EOF
-    chmod +x install.sh
-    log_info "Criado: install.sh (executável)"
-
-    # ============================================================
-    # 9. SCRIPT DE CONSTRUÇÃO E INSTALAÇÃO UNIFICADO
-    # ============================================================
-    
-    log_step "Criando script unificado"
-
-    cat > "build.sh" << 'EOF'
-#!/bin/bash
-# build.sh - Compila e instala o tema
-
-echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║                                                           ║"
-echo "║     🏛️  IF-XFCE-THEME - CONSTRUTOR UNIFICADO             ║"
-echo "║                                                           ║"
-echo "║     Identidade IF + Gov.br                               ║"
-echo "║                                                           ║"
-echo "╚═══════════════════════════════════════════════════════════╝"
-echo ""
-
-# Verifica sassc
-if ! command -v sassc &> /dev/null; then
-    echo "📦 Instalando sassc..."
-    sudo apt update -qq && sudo apt install -y sassc -qq
-fi
-
-# Compila
-echo "📦 Compilando temas..."
-./parse-sass.sh
-
-# Instala
-echo ""
-if [[ $EUID -ne 0 ]]; then
-    read -p "Instalar em /usr/share/themes requer sudo. Continuar? (s/N) " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Ss]$ ]]; then
-        sudo ./install.sh "$@"
-    else
-        echo "ℹ️  Instalação cancelada. Temas compilados em src/gtk-3.0/"
-    fi
-else
-    ./install.sh "$@"
-fi
-
-echo ""
-echo "🎉 Processo concluído!"
-EOF
-    chmod +x build.sh
-    log_info "Criado: build.sh (executável)"
-
-    # ============================================================
-    # 10. COMPILAÇÃO
-    # ============================================================
-    
-    log_step "Compilando os temas"
-    ./parse-sass.sh
-
-    # ============================================================
-    # 11. RESUMO FINAL
-    # ============================================================
-    
-    echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
-    echo -e "${GREEN}║  ✅ TEMA IF-XFCE CONSTRUÍDO COM SUCESSO!                         ║${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
-    echo -e "${GREEN}║  📁 Localização: $(pwd)${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
-    echo -e "${GREEN}║  📦 Para instalar:                                               ║${NC}"
-    echo -e "${GREEN}║     sudo ./install.sh                                            ║${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
-    echo -e "${GREEN}║  📝 Ou com opções:                                               ║${NC}"
-    echo -e "${GREEN}║     ./install.sh --profile admin                                 ║${NC}"
-    echo -e "${GREEN}║     ./install.sh --dest ~/.themes                                ║${NC}"
-    echo -e "${GREEN}║                                                                  ║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    # Pergunta se deseja instalar
-    if [ -t 0 ]; then
-        read -p "Deseja instalar o tema agora? (s/N) " -n 1 -r
-        echo ""
-        if [[ $REPLY =~ ^[Ss]$ ]]; then
-            if [[ $EUID -ne 0 ]]; then
-                echo "⚠️  Instalação requer privilégios de root. Execute:"
-                echo "   cd $(pwd) && sudo ./install.sh"
-            else
-                ./install.sh
-            fi
-        else
-            echo "ℹ️  Para instalar depois: cd $(pwd) && sudo ./install.sh"
-        fi
-    fi
-}
-
-# --- Executa ---
-main "$@"
+        log_info "  → src/gtk-4.0/
