@@ -1,12 +1,11 @@
 #!/bin/bash
-# if-theme-gen.sh - Gerador do Tema IF para XFCE
-# Version: 6.0 (Base Estrutural: Windows11-gtk-theme / Cores: Gov.br)
-# Autor: Tiago Juliano Ferreira / Engenharia de Interface
-# Descrição: Instala o tema visual com a arquitetura do Windows11-gtk-theme e cores do Gov.br.
+# if-theme-builder.sh - Constrói o tema IF-XFCE do zero
+# Versão: 1.0
+# Descrição: Cria toda a estrutura e arquivos do tema em um único comando
 
-set -e  # Interrompe o script em caso de erro
+set -e  # Interrompe em caso de erro
 
-# --- Configurações de Cores para o Terminal ---
+# --- Cores para output ---
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
@@ -15,351 +14,925 @@ readonly CYAN='\033[0;36m'
 readonly BOLD='\033[1m'
 readonly NC='\033[0m'
 
-log() {
-    local level=$1
-    local message=$2
-    local timestamp=$(date '+%H:%M:%S')
-    case $level in
-        "INFO")  echo -e "${BLUE}[${timestamp}] ℹ️  ${message}${NC}" ;;
-        "SUCCESS") echo -e "${GREEN}[${timestamp}] ✅ ${message}${NC}" ;;
-        "WARN")  echo -e "${YELLOW}[${timestamp}] ⚠️  ${message}${NC}" ;;
-        "ERROR") echo -e "${RED}[${timestamp}] ❌ ${message}${NC}" >&2 ;;
-        "STEP")  echo -e "\n${CYAN}[${timestamp}] 🚀 ${BOLD}${message}${NC}" ;;
-    esac
+# --- Funções de log ---
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-# --- Geração do Tema ---
-generate_theme() {
-    log "STEP" "Iniciando geração do Tema IF (Engine Windows11 + Gov.br)..."
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_step() {
+    echo -e "\n${CYAN}▶ ${BOLD}$1${NC}"
+}
+
+# --- Função para criar arquivos ---
+create_file() {
+    local file="$1"
+    local content="$2"
+    local dir=$(dirname "$file")
     
-    if [[ $EUID -ne 0 ]]; then
-        log "ERROR" "Este script precisa ser executado como root (sudo)."
-        exit 1
+    mkdir -p "$dir"
+    echo "$content" > "$file"
+    log_info "Criado: $file"
+}
+
+# --- Função principal ---
+main() {
+    clear
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║                                                                  ║${NC}"
+    echo -e "${CYAN}║     🏛️  CONSTRUTOR DO TEMA IF-XFCE v1.0                          ║${NC}"
+    echo -e "${CYAN}║                                                                  ║${NC}"
+    echo -e "${CYAN}║     Base: Windows11-gtk-theme + Identidade IF + Gov.br           ║${NC}"
+    echo -e "${CYAN}║                                                                  ║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # --- Verifica dependências ---
+    log_step "Verificando dependências"
+    if ! command -v sassc &> /dev/null; then
+        log_warn "sassc não encontrado. Instalando..."
+        sudo apt update -qq && sudo apt install -y sassc -qq
+        log_success "sassc instalado!"
+    else
+        log_success "sassc encontrado!"
     fi
 
-    # Garante a presença do unzip
-    if ! command -v unzip &> /dev/null; then
-        log "INFO" "Instalando a dependência 'unzip'..."
-        apt-get update -qq && apt-get install -y unzip -qq >/dev/null || true
-    fi
-
-    local THEME_NAME="IF-Theme"
-    local THEME_DIR="/usr/share/themes/${THEME_NAME}"
+    # --- Cria estrutura de diretórios ---
+    log_step "Criando estrutura de diretórios"
     
-    mkdir -p "${THEME_DIR}"/{gtk-3.0,gtk-4.0,xfwm4,xfce-notify-4.0}
+    BASE_DIR="if-xfce-theme"
+    mkdir -p "$BASE_DIR"/src/{_sass/gtk,_sass/xfwm4,gtk-3.0,gtk-4.0,xfwm4,xfce-notify-4.0}
+    cd "$BASE_DIR"
+    log_success "Estrutura criada em: $(pwd)"
 
-    # 1. index.theme
-    cat > "${THEME_DIR}/index.theme" << 'EOF'
-[Desktop Entry]
-Type=X-GNOME-Metatheme
-Name=IF-Theme
-Comment=Tema baseado na arquitetura do Windows11-gtk-theme com cores do Gov.br
-Encoding=UTF-8
+    # ============================================================
+    # 1. ARQUIVOS DE CORES (SCSS)
+    # ============================================================
+    
+    log_step "Criando arquivos de cores"
 
-[X-GNOME-Metatheme]
-GtkTheme=IF-Theme
-MetacityTheme=IF-Theme
-IconTheme=Papirus
-CursorTheme=Adwaita
-FontName=Rawline, Noto Sans 10
-EOF
+    # 1.1 Cores Base (comuns a todos os perfis)
+    create_file "src/_sass/_colors.scss" '// _colors.scss - Cores Base do Sistema
+// Cores oficiais: IF + Gov.br
 
-    # 2. gtk-3.0/gtk.css (Base Estrutural do Windows11-gtk-theme + Cores Gov.br)
-    log "INFO" "Construindo motor CSS baseado em Windows11-gtk-theme..."
-    cat > "${THEME_DIR}/gtk-3.0/gtk.css" << 'EOF'
+// Cores IF
+$if_verde: #2f9e41;
+$if_vermelho: #cd191e;
+$if_preto: #000000;
+
+// Cores Gov.br
+$gov_azul: #005ea2;
+$gov_azul_claro: #0072c3;
+$gov_amarelo: #ffb703;
+$gov_vermelho: #d83933;
+$gov_verde: #00a91c;
+
+// Cores de interface (mapeamento)
+$base_color: #ffffff;
+$text_color: #1e222b;
+$bg_color: #f8f9fa;
+$selected_bg_color: $gov_azul;
+$selected_fg_color: #ffffff;
+$border_color: rgba(0, 0, 0, 0.08);
+$text_muted_color: #6b7280;
+
+// Cores do gerenciador de janelas
+$wm_bg: $bg_color;
+$wm_unfocused_bg: #ffffff;
+$wm_highlight: rgba(255,255,255,0.4);
+$wm_title: $text_color;
+$wm_unfocused_title: rgba(0,0,0,0.6);
+$wm_button_close_hover_bg: #E57373;
+$wm_button_close_active_bg: #E53935;'
+
+    # 1.2 Cores - Perfil Administrativo
+    create_file "src/_sass/_colors-if-admin.scss" '// _colors-if-admin.scss - Perfil Administrativo
+// Sobriedade, profissionalismo, foco em produtividade
+
+@import "colors";
+
+// Mapeamento para o Windows11-gtk-theme
+$primary: $gov_azul;
+$primary_bg_hover: $gov_azul_claro;
+$success: $if_verde;
+$success_bg_hover: #3fb038;
+$warning: $gov_amarelo;
+$danger: $gov_vermelho;
+$link_color: $gov_azul;
+$link_visited_color: #7c3aed;
+
+// Fundos
+$bg_color: #f8f9fa;
+$view_color: #ffffff;
+$text_color: #1e222b;
+$text_muted_color: #6b7280;
+$border_color: rgba(0,0,0,0.08);
+
+// Seleção
+$selected_bg_color: $gov_azul;
+$selected_fg_color: #ffffff;'
+
+    # 1.3 Cores - Perfil Acadêmico
+    create_file "src/_sass/_colors-if-academic.scss" '// _colors-if-academic.scss - Perfil Acadêmico
+// Energia, inovação, tecnologia (Dark Mode)
+
+@import "colors";
+
+// Mapeamento para o Windows11-gtk-theme
+$primary: $if_vermelho;
+$primary_bg_hover: #e0191e;
+$success: $gov_verde;
+$success_bg_hover: #00c420;
+$warning: $gov_amarelo;
+$danger: $gov_vermelho;
+$link_color: $if_vermelho;
+$link_visited_color: #ce93d8;
+
+// Fundos (Dark)
+$bg_color: #1a1a1a;
+$view_color: #2d2d2d;
+$text_color: #ffffff;
+$text_muted_color: #abb2bf;
+$border_color: rgba(255,255,255,0.08);
+
+// Seleção
+$selected_bg_color: $if_vermelho;
+$selected_fg_color: #ffffff;'
+
+    # 1.4 Cores - Perfil Comunidade
+    create_file "src/_sass/_colors-if-community.scss" '// _colors-if-community.scss - Perfil Comunidade
+// Amigável, acessível, cores vibrantes
+
+@import "colors";
+
+// Mapeamento para o Windows11-gtk-theme
+$primary: $gov_azul;
+$primary_bg_hover: $gov_azul_claro;
+$success: $if_verde;
+$success_bg_hover: #3fb038;
+$warning: $gov_amarelo;
+$danger: $gov_vermelho;
+$link_color: $gov_azul;
+$link_visited_color: #7c3aed;
+
+// Fundos (Claro e vibrante)
+$bg_color: #f0f2f5;
+$view_color: #ffffff;
+$text_color: #1e222b;
+$text_muted_color: #6b7280;
+$border_color: rgba(0,0,0,0.08);
+
+// Seleção
+$selected_bg_color: $gov_azul;
+$selected_fg_color: #ffffff;'
+
+    # ============================================================
+    # 2. VARIÁVEIS ESTRUTURAIS
+    # ============================================================
+    
+    log_step "Criando variáveis estruturais"
+
+    create_file "src/_sass/_variables.scss" '// _variables.scss - Variáveis estruturais
+// Fonte oficial: Rawline (Gov.br)
+$font-family: "Rawline", "Noto Sans", "Helvetica", "Segoe UI", sans-serif;
+$font-size: 10pt;
+$title-font-size: 11pt;
+$compact-font-size: 9pt;
+
+// Arredondamentos
+$roundness: 4px;
+$roundness-ext: 6px;
+
+// Painel XFCE
+$panel_radius: 0px;
+$panel_height: 32px;
+
+// Sombras
+$shadow: 0 1px 2px rgba(0,0,0,0.12), 0 4px 5px rgba(0,0,0,0.16), 0 1px 6px rgba(0,0,0,0.1);'
+
+    # ============================================================
+    # 3. ARQUIVOS DE ENTRADA (GTK SCSS)
+    # ============================================================
+    
+    log_step "Criando arquivos de entrada GTK"
+
+    # 3.1 Arquivo de entrada base (apenas importações)
+    create_file "src/gtk-3.0/gtk-base.scss" '// gtk-base.scss - Base comum para todos os perfis
+$variant: "light";
+$topbar: "dark";
+$compact: "false";
+
+@import "../_sass/variables";
+@import "../_sass/colors-if-admin";
+@import "../_sass/gtk/drawing-4.0";
+@import "../_sass/gtk/common-4.0";
+@import "../_sass/gtk/apps-4.0";
+@import "../_sass/gtk/colors-public";'
+
+    # 3.2 Administrativo (claro, azul gov)
+    create_file "src/gtk-3.0/gtk-admin.scss" '// gtk-admin.scss - Perfil Administrativo
+$variant: "light";
+$topbar: "dark";
+$compact: "false";
+
+@import "../_sass/variables";
+@import "../_sass/colors-if-admin";
+@import "../_sass/gtk/drawing-4.0";
+@import "../_sass/gtk/common-4.0";
+@import "../_sass/gtk/apps-4.0";
+@import "../_sass/gtk/colors-public";'
+
+    # 3.3 Acadêmico (escuro, vermelho IF)
+    create_file "src/gtk-3.0/gtk-academic.scss" '// gtk-academic.scss - Perfil Acadêmico
+$variant: "dark";
+$topbar: "dark";
+$compact: "false";
+
+@import "../_sass/variables";
+@import "../_sass/colors-if-academic";
+@import "../_sass/gtk/drawing-4.0";
+@import "../_sass/gtk/common-4.0";
+@import "../_sass/gtk/apps-4.0";
+@import "../_sass/gtk/colors-public";'
+
+    # 3.4 Comunidade (claro, vibrante)
+    create_file "src/gtk-3.0/gtk-community.scss" '// gtk-community.scss - Perfil Comunidade
+$variant: "light";
+$topbar: "dark";
+$compact: "false";
+
+@import "../_sass/variables";
+@import "../_sass/colors-if-community";
+@import "../_sass/gtk/drawing-4.0";
+@import "../_sass/gtk/common-4.0";
+@import "../_sass/gtk/apps-4.0";
+@import "../_sass/gtk/colors-public";'
+
+    # 3.5 Versão Compacta (opcional)
+    create_file "src/gtk-3.0/gtk-admin-compact.scss" '// gtk-admin-compact.scss - Administrativo Compacto
+$variant: "light";
+$topbar: "dark";
+$compact: "true";
+
+@import "../_sass/variables";
+@import "../_sass/colors-if-admin";
+@import "../_sass/gtk/drawing-4.0";
+@import "../_sass/gtk/common-4.0";
+@import "../_sass/gtk/apps-4.0";
+@import "../_sass/gtk/colors-public";'
+
+    # ============================================================
+    # 4. ARQUIVOS DE ESTILO GTK (SCSS)
+    # ============================================================
+    
+    log_step "Criando arquivos de estilo GTK"
+
+    # 4.1 drawing-4.0.scss (desenhos e estados)
+    create_file "src/_sass/gtk/drawing-4.0.scss" '// drawing-4.0.scss - Desenhos e estados básicos
+// Baseado no Windows11-gtk-theme
+
+// Funções de desenho
+@function alpha($color, $alpha) {
+    @return rgba($color, $alpha);
+}
+
+@function shade($color, $amount) {
+    @if $amount > 1 {
+        @return mix(white, $color, ($amount - 1) * 100);
+    } @else {
+        @return mix(black, $color, (1 - $amount) * 100);
+    }
+}
+
+// Estados básicos
+%state-hover {
+    background-color: alpha(currentColor, 0.08);
+    color: $text_color;
+}
+
+%state-active {
+    background-color: alpha(currentColor, 0.16);
+    color: $text_color;
+}
+
+%state-disabled {
+    opacity: 0.5;
+    filter: grayscale(1);
+}
+
+%state-selected {
+    background-color: $selected_bg_color;
+    color: $selected_fg_color;
+}
+
+// Cantos arredondados
+@mixin rounded($radius: $roundness) {
+    border-radius: $radius;
+}
+
+// Sombras
+@mixin shadow($shadow) {
+    box-shadow: $shadow;
+}
+
+// Transições
+@mixin transition($properties...) {
+    transition: $properties 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}'
+
+    # 4.2 common-4.0.scss (componentes comuns)
+    create_file "src/_sass/gtk/common-4.0.scss" '// common-4.0.scss - Componentes comuns GTK
+// Baseado no Windows11-gtk-theme
+
 /* ============================================================
-   WINDOWS 11 GTK THEME ENGINE - GOV.BR COLOR PALETTE
-   Baseado em: https://github.com/yeyushengfan258/Windows11-gtk-theme
-   Cores: Design System do Gov.br
+   BASE
    ============================================================ */
 
-/* ---------- Cores Oficiais Gov.br ---------- */
-@define-color gov_azul #005ea2;          /* Azul Primário */
-@define-color gov_azul_claro #0072c3;    /* Azul Hover */
-@define-color gov_verde #00a91c;         /* Verde Sucesso */
-@define-color gov_amarelo #ffb703;       /* Amarelo Alerta */
-@define-color gov_vermelho #d83933;      /* Vermelho Erro */
-@define-color gov_cinza_escuro #414141;  /* Cinza Escuro */
-@define-color gov_cinza_claro #6f6f6f;   /* Cinza Claro */
-@define-color gov_cinza_fundo #f0f2f5;   /* Fundo Claro */
-@define-color gov_branco #ffffff;        /* Branco */
-@define-color gov_preto #000000;         /* Preto */
-
-/* ---------- Cores Institucionais IF ---------- */
-@define-color if_verde #359830;          /* Verde IF */
-@define-color if_vermelho #c90c0f;       /* Vermelho IF */
-
-/* ---------- Mapeamento de Cores ---------- */
-@define-color theme_base_color @gov_branco;
-@define-color theme_bg_color @gov_cinza_fundo;
-@define-color theme_fg_color @gov_preto;
-@define-color theme_text_color @gov_preto;
-@define-color theme_selected_bg_color @gov_azul;
-@define-color theme_selected_fg_color @gov_branco;
-
-/* ---------- Base ---------- */
 * {
-    font-family: "Rawline", "Segoe UI", "Helvetica", sans-serif;
-    padding: 0;
-    margin: 0;
-    -gtk-icon-style: regular;
+    font-family: $font-family;
 }
 
-window, .background {
-    background-color: @theme_bg_color;
-    color: @theme_fg_color;
+.background {
+    background-color: $bg_color;
+    color: $text_color;
 }
 
-/* ---------- Cabeçalhos e Barras (Fluent Design) ---------- */
-.header-bar,
-.titlebar,
-headerbar {
-    background-color: @theme_base_color;
-    color: @theme_fg_color;
-    border-radius: 8px 8px 0 0;
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+.background.csd {
+    @include rounded(10px);
 }
 
-.header-bar label,
-.titlebar label,
-headerbar label {
-    color: @theme_fg_color;
-    font-weight: 500;
+.background.maximized, .background.tiled {
+    border-radius: 0;
 }
 
-/* ---------- Botões (Estilo Windows 11) ---------- */
+/* ============================================================
+   BOTÕES
+   ============================================================ */
+
 button {
-    background-color: @theme_base_color;
-    color: @theme_fg_color;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
-    padding: 6px 16px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-    transition: all 100ms cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: $view_color;
+    color: $text_color;
+    border: 1px solid $border_color;
+    @include rounded($roundness);
+    padding: 6px 14px;
+    @include transition(all);
+    font-weight: 500;
+    min-height: 24px;
 }
 
 button:hover {
-    background-color: @gov_cinza_fundo;
-    border-color: rgba(0, 0, 0, 0.18);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    background-color: $bg_color;
+    border-color: alpha($text_color, 0.2);
 }
 
 button:active, button:checked {
-    background-color: #e5e7eb;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+    background-color: alpha($text_color, 0.1);
 }
 
-/* Botão Primário (Azul Gov) */
 button.suggested-action {
-    background-color: @gov_azul;
-    border-color: @gov_azul;
-    color: @gov_branco;
+    background-color: $primary;
+    border-color: $primary;
+    color: $selected_fg_color;
 }
+
 button.suggested-action:hover {
-    background-color: @gov_azul_claro;
-    border-color: @gov_azul_claro;
+    background-color: $primary_bg_hover;
 }
 
-/* Botão de Sucesso (Verde IF) */
-button.success-action {
-    background-color: @if_verde;
-    border-color: @if_verde;
-    color: @gov_branco;
-}
-button.success-action:hover {
-    background-color: #3fb038;
-    border-color: #3fb038;
-}
-
-/* Botão de Alerta (Amarelo Gov) */
-button.warning-action {
-    background-color: @gov_amarelo;
-    border-color: @gov_amarelo;
-    color: @gov_preto;
-}
-button.warning-action:hover {
-    background-color: #ffc820;
-    border-color: #ffc820;
-}
-
-/* Botão de Destruição (Vermelho IF) */
 button.destructive-action {
-    background-color: @if_vermelho;
-    border-color: @if_vermelho;
-    color: @gov_branco;
-}
-button.destructive-action:hover {
-    background-color: #e0191e;
-    border-color: #e0191e;
+    background-color: $danger;
+    border-color: $danger;
+    color: $selected_fg_color;
 }
 
-/* ---------- Entradas de Texto (Estilo Fluent) ---------- */
+button.destructive-action:hover {
+    background-color: shade($danger, 0.9);
+}
+
+button.success-action {
+    background-color: $success;
+    border-color: $success;
+    color: $selected_fg_color;
+}
+
+button.success-action:hover {
+    background-color: $success_bg_hover;
+}
+
+/* ============================================================
+   ENTRADAS
+   ============================================================ */
+
 entry {
-    background-color: @theme_base_color;
-    color: @theme_fg_color;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 6px;
-    padding: 6px 12px;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.02);
-    transition: all 150ms ease;
+    background-color: $view_color;
+    color: $text_color;
+    border: 1px solid $border_color;
+    @include rounded($roundness);
+    padding: 6px 10px;
+    min-height: 28px;
+    @include transition(all);
 }
 
 entry:focus {
-    border-color: @gov_azul;
-    box-shadow: 0 0 0 3px rgba(0, 94, 162, 0.15);
+    border-color: $primary;
+    box-shadow: 0 0 0 2px alpha($primary, 0.15);
 }
 
-/* ---------- Menus (Arredondados, Estilo Windows 11) ---------- */
-menu,
-.menu,
-.popup {
-    background-color: @theme_base_color;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 10px;
+entry:disabled {
+    opacity: 0.6;
+}
+
+/* ============================================================
+   CABEÇALHOS E BARRAS
+   ============================================================ */
+
+.header-bar, .titlebar, headerbar {
+    background-color: $view_color;
+    color: $text_color;
+    padding: 8px 12px;
+    border-bottom: 1px solid $border_color;
+    @include shadow(0 1px 3px rgba(0,0,0,0.03));
+}
+
+.header-bar label, .titlebar label, headerbar label {
+    font-weight: 500;
+}
+
+/* ============================================================
+   MENUS
+   ============================================================ */
+
+menu, .menu, popover.background > contents {
+    background-color: $view_color;
+    border: 1px solid $border_color;
+    @include rounded($roundness-ext);
     padding: 4px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    @include shadow($shadow);
 }
 
-menu item,
-.menu item {
-    padding: 8px 16px;
-    border-radius: 6px;
-    color: @theme_fg_color;
-    margin: 2px 0;
-    transition: background 100ms ease;
+menu item, .menu item {
+    padding: 6px 14px;
+    @include rounded($roundness);
+    @include transition(background);
 }
 
-menu item:hover,
-.menu item:selected {
-    background-color: rgba(0, 94, 162, 0.08);
-    color: @gov_azul;
+menu item:hover, .menu item:selected {
+    background-color: alpha($primary, 0.08);
+    color: $primary;
 }
 
-/* ---------- Barras de Rolagem (Estilo Windows 11) ---------- */
-scrollbar {
-    background-color: transparent;
-}
+/* ============================================================
+   BARRAS DE ROLAGEM
+   ============================================================ */
 
 scrollbar slider {
-    background-color: rgba(0, 0, 0, 0.15);
-    border-radius: 10px;
+    background-color: alpha($text_color, 0.2);
+    @include rounded(10px);
     min-width: 6px;
     min-height: 6px;
-    margin: 2px;
 }
 
 scrollbar slider:hover {
-    background-color: @gov_azul;
+    background-color: $primary;
 }
 
 scrollbar trough {
     background-color: transparent;
-    border: none;
 }
 
-/* ---------- Abas (Notebook) ---------- */
-notebook stack {
-    background-color: @theme_base_color;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 0 0 8px 8px;
-}
+/* ============================================================
+   ABAS
+   ============================================================ */
 
 notebook tab {
-    padding: 10px 18px;
+    padding: 8px 16px;
     background-color: transparent;
     border: none;
-    color: @gov_cinza_claro;
+    color: $text_muted_color;
     font-weight: 500;
     border-bottom: 2px solid transparent;
 }
 
 notebook tab:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-    color: @theme_fg_color;
+    color: $text_color;
 }
 
 notebook tab:checked {
-    color: @gov_azul;
-    border-bottom: 2px solid @gov_azul;
+    color: $primary;
+    border-bottom: 2px solid $primary;
 }
 
-/* ---------- Painel do XFCE (Estilo Windows 11) ---------- */
+notebook stack {
+    background-color: $view_color;
+    border: 1px solid $border_color;
+    @include rounded(0 0 $roundness $roundness);
+}
+
+/* ============================================================
+   PAINEL DO XFCE
+   ============================================================ */
+
 .xfce4-panel {
-    background-color: rgba(30, 34, 43, 0.95);
-    color: @gov_branco;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    background-color: $text_color;
+    color: $view_color;
+    @include shadow(0 2px 8px rgba(0,0,0,0.15));
 }
 
 .xfce4-panel button {
     background-color: transparent;
     border: none;
-    color: @gov_branco;
-    border-radius: 6px;
+    color: $view_color;
     padding: 2px 8px;
+    @include rounded($roundness);
 }
 
 .xfce4-panel button:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: alpha($view_color, 0.08);
 }
 
 .xfce4-panel button:checked {
-    background-color: rgba(255, 255, 255, 0.12);
+    background-color: alpha($view_color, 0.12);
 }
 
-/* ---------- Gerenciador de Arquivos (Thunar) ---------- */
+/* ============================================================
+   NOTIFICAÇÕES
+   ============================================================ */
+
+#XfceNotifyWindow {
+    background-color: $text_color;
+    @include rounded(12px);
+    padding: 14px 18px;
+    border: 1px solid $border_color;
+    @include shadow(0 10px 30px rgba(0,0,0,0.2));
+}
+
+#XfceNotifyWindow label#summary {
+    color: $view_color;
+    font-weight: 600;
+    font-size: 13.5px;
+}
+
+#XfceNotifyWindow label#body {
+    color: $text_muted_color;
+    font-size: 12px;
+}
+
+#XfceNotifyWindow button {
+    background-color: $primary;
+    border: none;
+    color: $selected_fg_color;
+    @include rounded($roundness);
+    padding: 4px 12px;
+}
+
+#XfceNotifyWindow button:hover {
+    background-color: $primary_bg_hover;
+}
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+
+link, .link-button {
+    color: $link_color;
+}
+
+link:visited, .link-button:visited {
+    color: $link_visited_color;
+}
+
+link:hover, .link-button:hover {
+    color: $primary_bg_hover;
+    text-decoration: underline;
+}
+
+/* ============================================================
+   COMBOBOXES
+   ============================================================ */
+
+combobox arrow, dropdown arrow {
+    -gtk-icon-source: -gtk-icontheme("pan-down-symbolic");
+    min-height: 16px;
+    min-width: 16px;
+}
+
+/* ============================================================
+   SCROLLBARS (Overlay)
+   ============================================================ */
+
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) {
+    background-color: transparent;
+}
+
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) > range > trough > slider {
+    min-width: 4px;
+    min-height: 4px;
+    margin: 3px;
+    border: 1px solid alpha($view_color, 0.3);
+}
+
+/* ============================================================
+   DIM LABEL
+   ============================================================ */
+
+.dim-label, row.expander:not(:checked) image.expander-row-arrow, row label.subtitle {
+    color: $text_muted_color;
+}
+
+/* ============================================================
+   VIEWS E LISTAS
+   ============================================================ */
+
+.view, iconview, listview, list {
+    background-color: $view_color;
+    color: $text_color;
+}
+
+.view:selected, iconview:selected, row:selected {
+    background-color: alpha($primary, 0.1);
+    color: $text_color;
+}
+
+/* ============================================================
+   EXPANDERS
+   ============================================================ */
+
+expander {
+    min-width: 16px;
+    min-height: 16px;
+    color: $text_muted_color;
+    -gtk-icon-source: -gtk-icontheme("pan-end-symbolic");
+}
+
+expander:checked {
+    -gtk-icon-source: -gtk-icontheme("pan-down-symbolic");
+}
+
+expander:hover {
+    color: $text_color;
+}'
+
+    # 4.3 apps-4.0.scss (aplicações específicas)
+    create_file "src/_sass/gtk/apps-4.0.scss" '// apps-4.0.scss - Estilos específicos de aplicações
+// Baseado no Windows11-gtk-theme
+
+/* ============================================================
+   NAUTILUS (Gerenciador de Arquivos)
+   ============================================================ */
+
+.nautilus-window {
+    background-color: $bg_color;
+}
+
+.nautilus-window .sidebar-pane placessidebar {
+    background-color: $bg_color;
+}
+
+.nautilus-window .sidebar-pane placessidebar:dir(ltr) {
+    border-right: 1px solid $border_color;
+}
+
+.nautilus-window .sidebar-pane placessidebar:dir(rtl) {
+    border-left: 1px solid $border_color;
+}
+
+.nautilus-grid-view child.activatable:selected {
+    background-color: alpha($primary, 0.1);
+}
+
+.nautilus-list-view listview.view > row.activatable:selected {
+    background-color: alpha($primary, 0.12);
+}
+
+/* ============================================================
+   THUNAR (XFCE File Manager)
+   ============================================================ */
+
 .thunar .sidebar {
-    background-color: @gov_cinza_fundo;
+    background-color: $bg_color;
 }
 
 .thunar .sidebar row:selected {
-    background-color: rgba(0, 94, 162, 0.12);
-    color: @gov_azul;
+    background-color: alpha($primary, 0.1);
+    color: $primary;
 }
 
-.thunar .standard-view .entry {
-    background-color: @theme_base_color;
+/* ============================================================
+   TERMINAL
+   ============================================================ */
+
+.terminal-window {
+    background-color: $text_color;
 }
-EOF
 
-    # 3. xfwm4/themerc (Estilo Windows 11)
-    log "INFO" "Criando engine do Xfwm4..."
-    cat > "${THEME_DIR}/xfwm4/themerc" << 'EOF'
-# Tema para o Gerenciador de Janelas do XFCE (xfwm4)
-# Estilo: Windows 11
+.terminal-window .terminal-screen {
+    color: $view_color;
+}
 
-theme=IF-Theme
+/* ============================================================
+   ABOUT DIALOG
+   ============================================================ */
 
-# Cores
+window.aboutdialog .large-icons {
+    -gtk-icon-size: 128px;
+}
+
+/* ============================================================
+   FILE CHOOSER
+   ============================================================ */
+
+filechooser #pathbarbox {
+    border-bottom: 1px solid $border_color;
+    background-color: $bg_color;
+}
+
+filechooser .dialog-action-box {
+    border-top: 1px solid $border_color;
+}
+
+/* ============================================================
+   INFOBAR
+   ============================================================ */
+
+infobar.info > revealer > box {
+    background-color: $view_color;
+    color: $text_color;
+}
+
+infobar.action > revealer > box {
+    background-color: $primary;
+    color: $selected_fg_color;
+}
+
+infobar.warning > revealer > box {
+    background-color: $warning;
+    color: $text_color;
+}
+
+infobar.error > revealer > box {
+    background-color: $danger;
+    color: $selected_fg_color;
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.toolbar, toolbar {
+    padding: 6px;
+    background-color: $bg_color;
+}
+
+.toolbar.osd, toolbar.osd {
+    background-color: alpha($text_color, 0.65);
+    color: $view_color;
+    @include rounded(10px);
+}
+
+/* ============================================================
+   STACKSWITCHER
+   ============================================================ */
+
+stackswitcher {
+    padding: 0 3px;
+    @include rounded($roundness);
+    background-color: alpha($text_color, 0.05);
+}
+
+stackswitcher.linked:not(.vertical) > button:not(.suggested-action):not(.destructive-action) {
+    background-color: transparent;
+    border: none;
+    @include rounded(0);
+}
+
+stackswitcher.linked:not(.vertical) > button:not(.suggested-action):not(.destructive-action):hover {
+    box-shadow: inset 0 -2px $border_color;
+}
+
+stackswitcher.linked:not(.vertical) > button:not(.suggested-action):not(.destructive-action):checked {
+    color: $text_color;
+    box-shadow: inset 0 -2px $primary;
+}
+
+/* ============================================================
+   PROGRESSBAR
+   ============================================================ */
+
+progressbar > trough {
+    background-color: alpha($text_color, 0.1);
+    @include rounded($roundness);
+}
+
+progressbar > trough > progress {
+    background-color: $primary;
+    @include rounded($roundness);
+}'
+
+    # 4.4 colors-public.scss (cores públicas)
+    create_file "src/_sass/gtk/colors-public.scss" '// colors-public.scss - Cores públicas do GTK
+// Baseado no Windows11-gtk-theme
+
+// Estas cores são exportadas para uso geral
+@define-color theme_fg_color $text_color;
+@define-color theme_text_color $text_color;
+@define-color theme_bg_color $bg_color;
+@define-color theme_base_color $view_color;
+@define-color theme_selected_bg_color $selected_bg_color;
+@define-color theme_selected_fg_color $selected_fg_color;
+@define-color insensitive_bg_color $bg_color;
+@define-color insensitive_fg_color $text_muted_color;
+@define-color insensitive_base_color alpha($view_color, 0.6);
+
+// Backdrop
+@define-color theme_unfocused_fg_color $text_color;
+@define-color theme_unfocused_text_color $text_color;
+@define-color theme_unfocused_bg_color $bg_color;
+@define-color theme_unfocused_base_color $view_color;
+@define-color theme_unfocused_selected_bg_color $selected_bg_color;
+@define-color theme_unfocused_selected_fg_color $selected_fg_color;
+
+// Bordas
+@define-color borders $border_color;
+@define-color unfocused_borders $border_color;
+
+// Estado
+@define-color warning_color $warning;
+@define-color error_color $danger;
+@define-color success_color $success;
+
+// WM
+@define-color wm_title $wm_title;
+@define-color wm_unfocused_title $wm_unfocused_title;
+@define-color wm_highlight $wm_highlight;
+@define-color wm_bg $wm_bg;
+@define-color wm_unfocused_bg $wm_unfocused_bg;
+@define-color wm_button_close_hover_bg $wm_button_close_hover_bg;
+@define-color wm_button_close_active_bg $wm_button_close_active_bg;
+
+// Outros
+@define-color content_view_bg $view_color;
+@define-color placeholder_text_color $text_muted_color;
+@define-color text_view_bg $view_color;'
+
+    # ============================================================
+    # 5. TEMA DO XFWM4
+    # ============================================================
+    
+    log_step "Criando tema do gerenciador de janelas"
+
+    create_file "src/xfwm4/themerc" '# Tema para o XFWM4 (Gerenciador de Janelas)
+# Estilo: Windows 11 com cores IF
+
+# Cores dos títulos
 title_text_active=#1e222b
 title_text_inactive=#6b7280
+
+# Cores dos fundos dos títulos
 title_bg_active=#ffffff
 title_bg_inactive=#f8f9fa
+
+# Cores das bordas
 border_color_active=#005ea2
 border_color_inactive=rgba(0,0,0,0.08)
 
 # Dimensões
-frame_border_top=8
+frame_border_top=10
 title_vertical_offset_active=6
 title_vertical_offset_inactive=6
 button_offset=8
 button_spacing=6
 
-# Layout dos Botões (O=Menu, H=Minimizar, M=Maximizar, C=Fechar)
+# Layout dos botões (O=Menu, H=Minimizar, M=Maximizar, C=Fechar)
+# Estilo Windows 11 (botões à direita)
 button_layout=O|HMC
 
-# Sombras (Estilo Windows)
+# Sombras (estilo Windows 11)
 shadow_delta_x=4
 shadow_delta_y=4
 shadow_radius=12
 shadow_color=#000000
-shadow_opacity=25
-EOF
+shadow_opacity=25'
 
-    # 4. xfce-notify-4.0/gtk.css (Estilo Windows 11)
-    log "INFO" "Criando engine de notificações..."
-    cat > "${THEME_DIR}/xfce-notify-4.0/gtk.css" << 'EOF'
+    # ============================================================
+    # 6. NOTIFICAÇÕES XFCE
+    # ============================================================
+    
+    log_step "Criando tema de notificações"
+
+    create_file "src/xfce-notify-4.0/gtk.css" '/* Tema de Notificações XFCE */
+/* Estilo Windows 11 com cores IF */
+
 #XfceNotifyWindow {
     background-color: #1e222b;
     border-radius: 12px;
@@ -406,42 +979,247 @@ EOF
 #XfceNotifyWindow progressbar progress {
     background-color: #00a91c;
     border-radius: 6px;
+}'
+
+    # ============================================================
+    # 7. SCRIPT DE COMPILAÇÃO (parse-sass.sh)
+    # ============================================================
+    
+    log_step "Criando script de compilação"
+
+    create_file "parse-sass.sh" '#!/bin/bash
+# parse-sass.sh - Compila os arquivos SCSS para CSS
+
+set -e
+
+log_info() { echo -e "\033[0;34m[INFO]\033[0m $1"; }
+log_success() { echo -e "\033[0;32m[SUCCESS]\033[0m $1"; }
+log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
+
+if ! command -v sassc &> /dev/null; then
+    log_error "sassc não encontrado. Instale com: sudo apt install sassc"
+    exit 1
+fi
+
+compile_profile() {
+    local profile=$1
+    log_info "Compilando perfil: ${profile}"
+    
+    if [ -f "src/gtk-3.0/gtk-${profile}.scss" ]; then
+        sassc -M -t expanded "src/gtk-3.0/gtk-${profile}.scss" "src/gtk-3.0/gtk-${profile}.css"
+        log_success "  → src/gtk-3.0/gtk-${profile}.css"
+    else
+        log_error "  → src/gtk-3.0/gtk-${profile}.scss não encontrado"
+        return 1
+    fi
+    
+    # GTK 4.0 (se existir, senão usa link simbólico)
+    if [ -f "src/gtk-4.0/gtk-${profile}.scss" ]; then
+        sassc -M -t expanded "src/gtk-4.0/gtk-${profile}.scss" "src/gtk-4.0/gtk-${profile}.css"
+        log_success "  → src/gtk-4.0/gtk-${profile}.css"
+    else
+        mkdir -p src/gtk-4.0
+        ln -sf ../gtk-3.0/gtk-${profile}.css src/gtk-4.0/gtk-${profile}.css
+        log_info "  → src/gtk-4.0/gtk-${profile}.css (link simbólico)"
+    fi
 }
+
+echo "🚀 Compilando temas IF..."
+echo ""
+
+compile_profile "admin"
+compile_profile "academic"
+compile_profile "community"
+
+# Versão padrão (link para admin)
+ln -sf gtk-admin.css src/gtk-3.0/gtk.css 2>/dev/null || true
+ln -sf gtk-admin.css src/gtk-4.0/gtk.css 2>/dev/null || true
+
+echo ""
+log_success "✅ Compilação concluída!"'
+
+    chmod +x parse-sass.sh
+
+    # ============================================================
+    # 8. SCRIPT DE INSTALAÇÃO (install.sh)
+    # ============================================================
+    
+    log_step "Criando script de instalação"
+
+    create_file "install.sh" '#!/bin/bash
+# install.sh - Instala os temas IF no sistema
+
+set -e
+
+DEST_DIR="/usr/share/themes"
+THEME_NAME="IF-Theme"
+PROFILES=("admin" "academic" "community")
+
+show_help() {
+    cat << EOF
+Uso: ./install.sh [OPÇÕES]
+
+Opções:
+  -d, --dest DIR      Diretório de destino (padrão: /usr/share/themes)
+  -n, --name NAME     Nome base do tema (padrão: IF-Theme)
+  -p, --profile PROFILE Instalar apenas um perfil específico
+  -h, --help          Mostra esta ajuda
 EOF
-
-    # 5. Link de portabilidade
-    ln -sf ../gtk-3.0/gtk.css "${THEME_DIR}/gtk-4.0/gtk.css"
-
-    # 6. Instalação da Fonte Rawline via CDNFonts
-    local FONT_DIR="/usr/share/fonts/truetype/rawline"
-    if mkdir -p "$FONT_DIR" 2>/dev/null; then
-        log "INFO" "Iniciando download do pacote completo via CDNFonts..."
-        
-        local TEMP_DIR=$(mktemp -d)
-        
-        if curl -fsSL -o "${TEMP_DIR}/rawline.zip" "https://cdnfonts.com"; then
-            log "INFO" "Extraindo a família de fontes Rawline..."
-            unzip -q -j "${TEMP_DIR}/rawline.zip" "*.ttf" -d "$FONT_DIR" 2>/dev/null || true
-            unzip -q -j "${TEMP_DIR}/rawline.zip" "*.otf" -d "$FONT_DIR" 2>/dev/null || true
-            
-            rm -rf "$TEMP_DIR"
-            fc-cache -f "$FONT_DIR" 2>/dev/null || true
-            log "SUCCESS" "Todas as variações do CDNFonts foram implantadas!"
-        else
-            rm -rf "$TEMP_DIR"
-            log "WARN" "Incapaz de alcançar o servidor CDNFonts. Fallback nativo ativo."
-        fi
-    fi
-
-    # 7. Aplicação do Tema
-    if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
-        log "INFO" "Aplicando tema para o usuário $SUDO_USER..."
-        sudo -u "$SUDO_USER" xfconf-query -c xsettings -p /Net/ThemeName -s "IF-Theme" 2>/dev/null || true
-        sudo -u "$SUDO_USER" xfconf-query -c xfwm4 -p /general/theme -s "IF-Theme" 2>/dev/null || true
-        log "SUCCESS" "Tema aplicado. Reinicie o painel se necessário."
-    fi
-
-    log "SUCCESS" "Instalação finalizada com sucesso!"
 }
 
-generate_theme
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--dest) DEST_DIR="$2"; shift 2 ;;
+        -n|--name) THEME_NAME="$2"; shift 2 ;;
+        -p|--profile) PROFILES=("$2"); shift 2 ;;
+        -h|--help) show_help; exit 0 ;;
+        *) echo "❌ Opção desconhecida: $1"; show_help; exit 1 ;;
+    esac
+done
+
+if [[ $EUID -ne 0 ]] && [[ "$DEST_DIR" == "/usr/share/themes" ]]; then
+    echo "⚠️  Instalação em /usr/share/themes requer privilégios de root."
+    echo "   Execute: sudo $0"
+    exit 1
+fi
+
+install_profile() {
+    local profile=$1
+    local theme_dir="${DEST_DIR}/${THEME_NAME}-${profile}"
+    
+    echo "📦 Instalando: ${profile} em ${theme_dir}"
+    
+    mkdir -p "${theme_dir}"/{gtk-3.0,gtk-4.0,xfwm4,xfce-notify-4.0}
+    
+    # Copia CSS
+    if [ -f "src/gtk-3.0/gtk-${profile}.css" ]; then
+        cp "src/gtk-3.0/gtk-${profile}.css" "${theme_dir}/gtk-3.0/gtk.css"
+    fi
+    
+    if [ -f "src/gtk-4.0/gtk-${profile}.css" ]; then
+        cp "src/gtk-4.0/gtk-${profile}.css" "${theme_dir}/gtk-4.0/gtk.css"
+    else
+        ln -sf ../gtk-3.0/gtk.css "${theme_dir}/gtk-4.0/gtk.css"
+    fi
+    
+    # Copia xfwm4
+    if [ -f "src/xfwm4/themerc" ]; then
+        cp "src/xfwm4/themerc" "${theme_dir}/xfwm4/themerc"
+    fi
+    
+    # Copia notificações
+    if [ -f "src/xfce-notify-4.0/gtk.css" ]; then
+        cp "src/xfce-notify-4.0/gtk.css" "${theme_dir}/xfce-notify-4.0/gtk.css"
+    fi
+    
+    # Cria index.theme
+    cat > "${theme_dir}/index.theme" << EOF
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=${THEME_NAME} ${profile}
+Comment=Tema IF - Perfil ${profile}
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=${THEME_NAME}-${profile}
+MetacityTheme=${THEME_NAME}-${profile}
+IconTheme=Papirus
+CursorTheme=Adwaita
+FontName=Rawline, Noto Sans 10
+EOF
+    
+    chmod -R 755 "${theme_dir}"
+    chown -R root:root "${theme_dir}" 2>/dev/null || true
+    
+    echo "✅ ${profile} instalado!"
+}
+
+echo "🚀 Instalando temas IF..."
+echo ""
+
+for profile in "${PROFILES[@]}"; do
+    install_profile "$profile"
+done
+
+echo ""
+echo "🎉 Instalação concluída!"
+echo ""
+echo "📝 Para aplicar:"
+echo "   xfconf-query -c xfce4-desktop -p /gtk-theme -s \"${THEME_NAME}-admin\""
+echo "   xfconf-query -c xfwm4 -p /general/theme -s \"${THEME_NAME}-admin\""'
+
+    chmod +x install.sh
+
+    # ============================================================
+    # 9. SCRIPT DE CONSTRUÇÃO E INSTALAÇÃO UNIFICADO
+    # ============================================================
+    
+    log_step "Criando script unificado"
+
+    create_file "build.sh" '#!/bin/bash
+# build.sh - Compila e instala o tema
+
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║                                                           ║"
+echo "║     🏛️  IF-XFCE-THEME - CONSTRUTOR UNIFICADO             ║"
+echo "║                                                           ║"
+echo "║     Identidade IF + Gov.br                               ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+
+# Verifica sassc
+if ! command -v sassc &> /dev/null; then
+    echo "📦 Instalando sassc..."
+    sudo apt update -qq && sudo apt install -y sassc -qq
+fi
+
+# Compila
+echo "📦 Compilando temas..."
+./parse-sass.sh
+
+# Instala
+echo ""
+if [[ $EUID -ne 0 ]]; then
+    read -p "Instalar em /usr/share/themes requer sudo. Continuar? (s/N) " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Ss]$ ]]; then
+        sudo ./install.sh "$@"
+    else
+        echo "ℹ️  Instalação cancelada. Temas compilados em src/gtk-3.0/"
+    fi
+else
+    ./install.sh "$@"
+fi
+
+echo ""
+echo "🎉 Processo concluído!"'
+
+    chmod +x build.sh
+
+    # ============================================================
+    # 10. README
+    # ============================================================
+    
+    log_step "Criando README"
+
+    create_file "README.md" '# 🏛️ IF-XFCE-Theme
+
+Tema oficial para o ambiente gráfico XFCE, baseado na **Identidade Visual da Rede Federal** e no **Design System do Gov.br**.
+
+## 📋 Perfis
+
+| Perfil | Nome do Tema | Descrição |
+|--------|--------------|-----------|
+| **Administrativo** | `IF-Theme-admin` | Sobriedade, profissionalismo, foco em produtividade |
+| **Acadêmico** | `IF-Theme-academic` | Energia, inovação, tecnologia (Dark Mode) |
+| **Comunidade** | `IF-Theme-community` | Amigável, acessível, cores vibrantes |
+
+## 🚀 Instalação
+
+### Instalação Rápida
+
+```bash
+git clone https://codeberg.org/seu-usuario/if-xfce-theme.git
+cd if-xfce-theme
+./build.sh
