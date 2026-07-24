@@ -1045,4 +1045,232 @@ compile_profile() {
     else
         mkdir -p src/gtk-4.0
         ln -sf ../gtk-3.0/gtk-${profile}.css src/gtk-4.0/gtk-${profile}.css
-        log_info "  → src/gtk-4.0/
+        log_info "  → src/gtk-4.0/gtk-${profile}.css (link simbólico)"
+    fi
+}
+
+echo "🚀 Compilando temas IF..."
+echo ""
+
+compile_profile "admin"
+compile_profile "academic"
+compile_profile "community"
+
+# Versão padrão (link para admin)
+ln -sf gtk-admin.css src/gtk-3.0/gtk.css 2>/dev/null || true
+ln -sf gtk-admin.css src/gtk-4.0/gtk.css 2>/dev/null || true
+
+echo ""
+log_success "✅ Compilação concluída!"
+EOF
+    chmod +x parse-sass.sh
+    log_info "Criado: parse-sass.sh (executável)"
+
+    # ============================================================
+    # 8. SCRIPT DE INSTALAÇÃO (install.sh)
+    # ============================================================
+    
+    log_step "Criando script de instalação"
+
+    cat > "install.sh" << 'EOF'
+#!/bin/bash
+# install.sh - Instala os temas IF no sistema
+
+set -e
+
+DEST_DIR="/usr/share/themes"
+THEME_NAME="IF-Theme"
+PROFILES=("admin" "academic" "community")
+
+show_help() {
+    cat << HELP
+Uso: ./install.sh [OPÇÕES]
+
+Opções:
+  -d, --dest DIR      Diretório de destino (padrão: /usr/share/themes)
+  -n, --name NAME     Nome base do tema (padrão: IF-Theme)
+  -p, --profile PROFILE Instalar apenas um perfil específico
+  -h, --help          Mostra esta ajuda
+HELP
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--dest) DEST_DIR="$2"; shift 2 ;;
+        -n|--name) THEME_NAME="$2"; shift 2 ;;
+        -p|--profile) PROFILES=("$2"); shift 2 ;;
+        -h|--help) show_help; exit 0 ;;
+        *) echo "❌ Opção desconhecida: $1"; show_help; exit 1 ;;
+    esac
+done
+
+if [[ $EUID -ne 0 ]] && [[ "$DEST_DIR" == "/usr/share/themes" ]]; then
+    echo "⚠️  Instalação em /usr/share/themes requer privilégios de root."
+    echo "   Execute: sudo $0"
+    exit 1
+fi
+
+install_profile() {
+    local profile=$1
+    local theme_dir="${DEST_DIR}/${THEME_NAME}-${profile}"
+    
+    echo "📦 Instalando: ${profile} em ${theme_dir}"
+    
+    mkdir -p "${theme_dir}"/{gtk-3.0,gtk-4.0,xfwm4,xfce-notify-4.0}
+    
+    # Copia CSS
+    if [ -f "src/gtk-3.0/gtk-${profile}.css" ]; then
+        cp "src/gtk-3.0/gtk-${profile}.css" "${theme_dir}/gtk-3.0/gtk.css"
+    fi
+    
+    if [ -f "src/gtk-4.0/gtk-${profile}.css" ]; then
+        cp "src/gtk-4.0/gtk-${profile}.css" "${theme_dir}/gtk-4.0/gtk.css"
+    else
+        ln -sf ../gtk-3.0/gtk.css "${theme_dir}/gtk-4.0/gtk.css"
+    fi
+    
+    # Copia xfwm4
+    if [ -f "src/xfwm4/themerc" ]; then
+        cp "src/xfwm4/themerc" "${theme_dir}/xfwm4/themerc"
+    fi
+    
+    # Copia notificações
+    if [ -f "src/xfce-notify-4.0/gtk.css" ]; then
+        cp "src/xfce-notify-4.0/gtk.css" "${theme_dir}/xfce-notify-4.0/gtk.css"
+    fi
+    
+    # Cria index.theme
+    cat > "${theme_dir}/index.theme" << INDEX
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=${THEME_NAME} ${profile}
+Comment=Tema IF - Perfil ${profile}
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=${THEME_NAME}-${profile}
+MetacityTheme=${THEME_NAME}-${profile}
+IconTheme=Papirus
+CursorTheme=Adwaita
+FontName=Rawline, Noto Sans 10
+INDEX
+    
+    chmod -R 755 "${theme_dir}"
+    chown -R root:root "${theme_dir}" 2>/dev/null || true
+    
+    echo "✅ ${profile} instalado!"
+}
+
+echo "🚀 Instalando temas IF..."
+echo ""
+
+for profile in "${PROFILES[@]}"; do
+    install_profile "$profile"
+done
+
+echo ""
+echo "🎉 Instalação concluída!"
+echo ""
+echo "📝 Para aplicar:"
+echo "   xfconf-query -c xfce4-desktop -p /gtk-theme -s \"${THEME_NAME}-admin\""
+echo "   xfconf-query -c xfwm4 -p /general/theme -s \"${THEME_NAME}-admin\""
+EOF
+    chmod +x install.sh
+    log_info "Criado: install.sh (executável)"
+
+    # ============================================================
+    # 9. SCRIPT DE CONSTRUÇÃO E INSTALAÇÃO UNIFICADO
+    # ============================================================
+    
+    log_step "Criando script unificado"
+
+    cat > "build.sh" << 'EOF'
+#!/bin/bash
+# build.sh - Compila e instala o tema
+
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║                                                           ║"
+echo "║     🏛️  IF-XFCE-THEME - CONSTRUTOR UNIFICADO             ║"
+echo "║                                                           ║"
+echo "║     Identidade IF + Gov.br                               ║"
+echo "║                                                           ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+
+# Verifica sassc
+if ! command -v sassc &> /dev/null; then
+    echo "📦 Instalando sassc..."
+    sudo apt update -qq && sudo apt install -y sassc -qq
+fi
+
+# Compila
+echo "📦 Compilando temas..."
+./parse-sass.sh
+
+# Instala
+echo ""
+if [[ $EUID -ne 0 ]]; then
+    read -p "Instalar em /usr/share/themes requer sudo. Continuar? (s/N) " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Ss]$ ]]; then
+        sudo ./install.sh "$@"
+    else
+        echo "ℹ️  Instalação cancelada. Temas compilados em src/gtk-3.0/"
+    fi
+else
+    ./install.sh "$@"
+fi
+
+echo ""
+echo "🎉 Processo concluído!"
+EOF
+    chmod +x build.sh
+    log_info "Criado: build.sh (executável)"
+
+    # ============================================================
+    # 10. COMPILAÇÃO
+    # ============================================================
+    
+    log_step "Compilando os temas"
+    ./parse-sass.sh
+
+    # ============================================================
+    # 11. RESUMO FINAL
+    # ============================================================
+    
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  ✅ TEMA IF-XFCE CONSTRUÍDO COM SUCESSO!                         ║${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  📁 Localização: $(pwd)${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  📦 Para instalar:                                               ║${NC}"
+    echo -e "${GREEN}║     sudo ./install.sh                                            ║${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}║  📝 Ou com opções:                                               ║${NC}"
+    echo -e "${GREEN}║     ./install.sh --profile admin                                 ║${NC}"
+    echo -e "${GREEN}║     ./install.sh --dest ~/.themes                                ║${NC}"
+    echo -e "${GREEN}║                                                                  ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Pergunta se deseja instalar
+    if [ -t 0 ]; then
+        read -p "Deseja instalar o tema agora? (s/N) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Ss]$ ]]; then
+            if [[ $EUID -ne 0 ]]; then
+                echo "⚠️  Instalação requer privilégios de root. Execute:"
+                echo "   cd $(pwd) && sudo ./install.sh"
+            else
+                ./install.sh
+            fi
+        else
+            echo "ℹ️  Para instalar depois: cd $(pwd) && sudo ./install.sh"
+        fi
+    fi
+}
+
+# --- Executa ---
+main "$@"
